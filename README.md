@@ -48,7 +48,8 @@ status /var/log/openvpn-status.log
 log /var/log/openvpn.log
 verb 3
 ```
-### Замеряем скорость в туннеле:
+### Замеряем скорость в туннеле
+## TAP
 - на openvpn сервере запускаем iperf3 в режиме сервера: iperf3 -s &
 ```
 [root@server ~]# iperf3 -s &
@@ -84,6 +85,7 @@ Connecting to host 10.10.10.1, port 5201
 [  4]  20.00-25.00  sec  14.8 MBytes  24.9 Mbits/sec    0   1.07 MBytes
 [  4]  25.00-30.00  sec  12.3 MBytes  20.7 Mbits/sec    0   1.09 MBytes
 ```
+### TUN
 Пробуем тоже самое в режиме tun заменив в конфиге tap на tun:
 server:
 ```
