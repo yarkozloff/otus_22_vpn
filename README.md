@@ -194,4 +194,35 @@ status /var/log/openvpn-status.log
 log /var/log/openvpn.log
 verb 3
 ```
-Конфигурационный файл /etc/openvpn/server.conf для клиента:
+Конфигурационный файл /etc/openvpn/client.conf для клиента:
+```
+dev tun
+proto udp
+remote 192.168.10.10 1207
+client
+resolv-retry infinite
+#ca ./ca.crt
+#cert ./client.crt
+#key ./client.key
+route 192.168.10.0 255.255.255.0
+persist-key
+persist-tun
+comp-lzo
+verb 3
+<ca>
+-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----
+</ca>
+<cert>
+-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----
+</cert>
+<key>
+-----BEGIN PRIVATE KEY-----
+-----END PRIVATE KEY-----
+</key>
+```
+Теперь когда всё готово, кладем необходимые сертификаты/ключи на хост машину в каталог /etc/openvpn или прописываем ключи как указано выше. Запускаемся:
+```
+
+```
