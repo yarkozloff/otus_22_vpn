@@ -48,7 +48,7 @@ status /var/log/openvpn-status.log
 log /var/log/openvpn.log
 verb 3
 ```
-Замеряем скорость в туннеле:
+### Замеряем скорость в туннеле:
 - на openvpn сервере запускаем iperf3 в режиме сервера: iperf3 -s &
 ```
 [root@server ~]# iperf3 -s &
@@ -84,4 +84,37 @@ Connecting to host 10.10.10.1, port 5201
 [  4]  20.00-25.00  sec  14.8 MBytes  24.9 Mbits/sec    0   1.07 MBytes
 [  4]  25.00-30.00  sec  12.3 MBytes  20.7 Mbits/sec    0   1.09 MBytes
 ```
-Пробуем тоже самое в режиме tun заменив конфиги
+Пробуем тоже самое в режиме tun заменив в конфиге tap на tun:
+server:
+```
+[root@server ~]# iperf3 -s &
+[2] 5631
+[root@server ~]# iperf3: error - unable to start listener for connections: Address already in use
+iperf3: exiting
+Accepted connection from 10.10.10.2, port 44486
+[  5] local 10.10.10.1 port 5201 connected to 10.10.10.2 port 44488
+[ ID] Interval           Transfer     Bandwidth
+[  5]   0.00-1.00   sec  2.87 MBytes  24.1 Mbits/sec
+[  5]   1.00-2.00   sec  2.68 MBytes  22.5 Mbits/sec
+[  5]   2.00-3.00   sec  2.83 MBytes  23.7 Mbits/sec
+[  5]   3.00-4.00   sec  2.80 MBytes  23.4 Mbits/sec
+[  5]   4.00-5.00   sec  2.98 MBytes  25.0 Mbits/sec
+[  5]   5.00-6.00   sec  2.72 MBytes  22.8 Mbits/sec
+[  5]   6.00-7.01   sec  2.99 MBytes  25.0 Mbits/sec
+[  5]   7.01-8.00   sec  3.01 MBytes  25.4 Mbits/sec
+[  5]   8.00-9.00   sec  3.13 MBytes  26.2 Mbits/sec
+[  5]   9.00-10.00  sec  2.97 MBytes  24.9 Mbits/sec
+[  5]  10.00-11.00  sec  3.08 MBytes  25.8 Mbits/sec
+```
+client:
+```
+[root@client ~]# iperf3 -c 10.10.10.1 -t 40 -i 5
+Connecting to host 10.10.10.1, port 5201
+[  4] local 10.10.10.2 port 44488 connected to 10.10.10.1 port 5201
+[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  4]   0.00-5.00   sec  15.9 MBytes  26.6 Mbits/sec    0    654 KBytes
+[  4]   5.00-10.00  sec  14.6 MBytes  24.5 Mbits/sec   28    458 KBytes
+[  4]  10.00-15.01  sec  15.5 MBytes  25.9 Mbits/sec    0    552 KBytes
+[  4]  15.01-20.00  sec  15.4 MBytes  25.9 Mbits/sec    0    595 KBytes
+^C[  4]  20.00-20.95  sec  2.29 MBytes  20.3 Mbits/sec    0    626 KBytes
+```
