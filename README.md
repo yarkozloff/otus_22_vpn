@@ -6,6 +6,18 @@
 2. Поднять RAS на базе OpenVPN с клиентскими сертификатами, подключиться с локальной машины на виртуалку.
 3 (*). Самостоятельно изучить, поднять ocserv и подключиться с хоста к виртуалке.
 
+## Среда выполнения
+```
+root@yarkozloff:/otus/vpn# hostnamectl | grep "Operating System"
+  Operating System: Ubuntu 20.04.3 LTS
+  
+root@yarkozloff:/otus/vpn# vboxmanage --version
+6.1.26_Ubuntur145957
+
+root@yarkozloff:/otus/vpn# vagrant --version
+Vagrant 2.3.0
+```
++ Локально загруженный бокс centos/7
 ## 1. VPN между двумя виртуальными машинами
 Пишем Vagrantfile, который поднимает 2 машины и пишем роли для развертывания VPN. В playbook будет осуществляться следующие операции:
 
@@ -120,3 +132,66 @@ Connecting to host 10.10.10.1, port 5201
 [  4]  15.01-20.00  sec  15.4 MBytes  25.9 Mbits/sec    0    595 KBytes
 ^C[  4]  20.00-20.95  sec  2.29 MBytes  20.3 Mbits/sec    0    626 KBytes
 ```
+### Отличия tun и tap нитерфесов:
+tap - уровень L2, tun - L3
+tun - не умеет в мультикаст => не позволяет использовать OSPF ( link-state протоколы динамической маршрутизации). tap - умеет.
+## 2. RAS на базе OpenVPN с клиентскими сертификатами
+Подготавливаем только одну машину и устанавливаем пакеты openvpn, easy-rsa:
+```
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+Vagrant.configure(2) do |config|
+ config.vm.box = "centos7"
+ config.vm.define "serverras" do |serverras|
+ serverras.vm.hostname = "serverras.loc"
+ serverras.vm.network "private_network", ip: "192.168.10.10"
+ config.vm.provision "ansible" do |ansible|
+        ansible.playbook = "play_serverras.yaml"
+      end
+ end
+end
+```
+Далее действия выполняются вручную.
+
+Подключаемся к машине, переходим в директорию /etc/openvpn/ и инициализируем pki:
+```
+[root@localhost ~]# cd /etc/openvpn/
+[root@localhost openvpn]# /usr/share/easy-rsa/3.0.8/easyrsa init-pki
+
+init-pki complete; you may now create a CA or requests.
+Your newly created PKI dir is: /etc/openvpn/pki
+```
+Генерируем необходимые ключи и сертификаты для сервера и клиента
+```
+echo 'rasvpn' | /usr/share/easy-rsa/3.0.8/easyrsa build-ca nopass  
+echo 'rasvpn' | /usr/share/easy-rsa/3.0.8/easyrsa gen-req server nopass  
+echo 'yes' | /usr/share/easy-rsa/3.0.8/easyrsa sign-req server server  
+/usr/share/easy-rsa/3.0.8/easyrsa gen-dh  
+openvpn --genkey --secret ta.key  
+echo 'client' | /usr/share/easy-rsa/3/easyrsa gen-req client nopass  
+echo 'yes' | /usr/share/easy-rsa/3/easyrsa sign-req client client  
+```
+Создаем конфигурационный файл /etc/openvpn/server.conf для сервера
+```
+port 1207
+proto udp
+dev tun
+ca /etc/openvpn/pki/ca.crt
+cert /etc/openvpn/pki/issued/server.crt
+key /etc/openvpn/pki/private/server.key
+dh /etc/openvpn/pki/dh.pem
+server 10.10.10.0 255.255.255.0
+route 192.168.10.0 255.255.255.0
+push "route 192.168.10.0 255.255.255.0"
+ifconfig-pool-persist ipp.txt
+client-to-client
+client-config-dir /etc/openvpn/client
+keepalive 10 120
+#comp-lzo
+persist-key
+persist-tun
+status /var/log/openvpn-status.log
+log /var/log/openvpn.log
+verb 3
+```
+Конфигурационный файл /etc/openvpn/server.conf для клиента:
