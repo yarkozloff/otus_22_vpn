@@ -1,0 +1,48 @@
+---
+- name: Play server
+  hosts: server
+  become: yes
+  gather_facts: false
+  tasks:
+
+  - name: update yum caсhe
+    yum:
+      update_cache: true 
+      
+  - name: install epel-release
+    yum:
+      state: present
+      name:
+        - epel-release
+      
+  - name: Install packages for openvpn
+    yum:
+      name: 
+        - tcpdump
+        - policycoreutils-python
+        - openvpn
+        - iperf3
+        - vim
+
+  - name: Disable SELinux
+    ansible.posix.selinux:
+      state: disabled
+      
+  - name: Openvpn genkey
+    shell: openvpn --genkey --secret /etc/openvpn/static.key
+    
+  - name: Copy server.conf
+    copy: 
+      src=server/server.conf
+      dest=/etc/openvpn/server.conf
+      
+  - name: Start a service openvpn@server
+    systemd:
+      name: openvpn@server
+      state: started
+      enabled: yes
+
+  - name: Fetch static.key
+    ansible.builtin.fetch:
+      src: /etc/openvpn/static.key
+      dest: client/static.key

@@ -1,0 +1,50 @@
+---
+- name: Play client
+  hosts: client
+  become: yes
+  gather_facts: false
+  tasks:
+
+  - name: install epel-release
+    yum:
+      state: present
+      name:
+        - epel-release
+
+  - name: Install packages for openvpn
+    yum:
+      name: 
+        - tcpdump
+        - policycoreutils-python
+        - openvpn
+        - iperf3
+        - vim
+
+  - name: Disable SELinux
+    ansible.posix.selinux:
+      state: disabled
+      
+  - name: Copy static.key
+    copy: 
+      src="client/static.key/server/etc/openvpn/static.key"
+      dest=/etc/openvpn/static.key
+    
+  - name: Copy server.conf
+    copy: 
+      src=client/server.conf
+      dest=/etc/openvpn/server.conf
+      
+  - name: Start a service openvpn@server
+    systemd:
+      name: openvpn@server
+      state: started
+      enabled: yes
+
+
+
+
+
+  
+
+
+
