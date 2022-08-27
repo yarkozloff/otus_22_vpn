@@ -239,9 +239,9 @@ PING 10.10.10.1 (10.10.10.1) 56(84) bytes of data.
 rtt min/avg/max/mdev = 3.313/15.397/38.946/14.391 ms
 ```
 Также проверяем командой ip r (netstat -rn) на клиент машине, что сеть туннеля импортирована в таблицу маршрутизации.
-``[root@client openvpn]# ip r
+```
+[root@client openvpn]# ip r
 default via 10.0.2.2 dev eth0 proto dhcp metric 100
 10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
 192.168.10.0/24 dev eth1 proto kernel scope link src 192.168.10.20 metric 101`
-
 ```
