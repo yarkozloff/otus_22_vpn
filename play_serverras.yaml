@@ -1,0 +1,26 @@
+---
+- name: Play rasvpn
+  hosts: rasvpn
+  become: yes
+  gather_facts: false
+  tasks:
+
+  - name: update yum caсhe
+    yum:
+      update_cache: true 
+      
+  - name: install epel-release
+    yum:
+      state: present
+      name:
+        - epel-release
+      
+  - name: Install  openvpn easy-rsa
+    yum:
+      name: 
+        - tcpdump
+        - policycoreutils-python
+        - openvpn
+        - iperf3
+        - vim
+        - easy-rsa
