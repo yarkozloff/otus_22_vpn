@@ -136,24 +136,31 @@ Connecting to host 10.10.10.1, port 5201
 - tap - уровень L2, tun - L3
 - tun - не умеет в мультикаст => не позволяет использовать OSPF (link-state протоколы динамической маршрутизации). tap - умеет.
 ## 2. RAS на базе OpenVPN с клиентскими сертификатами
-Подготавливаем только одну машину и устанавливаем пакеты openvpn, easy-rsa:
+Подготавливаем машину client и server и устанавливаем пакеты openvpn, easy-rsa:
 ```
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
 Vagrant.configure(2) do |config|
  config.vm.box = "centos7"
- config.vm.define "serverras" do |serverras|
- serverras.vm.hostname = "serverras.loc"
- serverras.vm.network "private_network", ip: "192.168.10.10"
+ config.vm.define "rasvpn" do |rasvpn|
+ rasvpn.vm.hostname = "rasvpn.loc"
+ rasvpn.vm.network "private_network", ip: "192.168.10.10"
+ config.vbguest.auto_update = false
  config.vm.provision "ansible" do |ansible|
         ansible.playbook = "play_serverras.yaml"
+      end
+ end
+ config.vm.define "client" do |client|
+ client.vm.hostname = "client.loc"
+ client.vm.network "private_network", ip: "192.168.10.20"
+ config.vbguest.auto_update = false
+ config.vm.provision "ansible" do |ansible|
+        ansible.playbook = "play_clientras.yaml"
       end
  end
 end
 ```
 Далее действия выполняются вручную.
 
-Подключаемся к машине, переходим в директорию /etc/openvpn/ и инициализируем pki:
+Подключаемся к машине rasvpn, накоторой будет работать серверная часть openvpn, переходим в директорию /etc/openvpn/ и инициализируем pki:
 ```
 [root@localhost ~]# cd /etc/openvpn/
 [root@localhost openvpn]# /usr/share/easy-rsa/3.0.8/easyrsa init-pki
@@ -170,6 +177,10 @@ echo 'yes' | /usr/share/easy-rsa/3.0.8/easyrsa sign-req server server
 openvpn --genkey --secret ta.key  
 echo 'client' | /usr/share/easy-rsa/3/easyrsa gen-req client nopass  
 echo 'yes' | /usr/share/easy-rsa/3/easyrsa sign-req client client  
+```
+Зададим параметр iroute для клиента
+```
+echo 'iroute 192.168.10.20 255.255.255.0' > /etc/openvpn/client/client
 ```
 Создаем конфигурационный файл /etc/openvpn/server.conf для сервера
 ```
@@ -209,20 +220,28 @@ persist-key
 persist-tun
 comp-lzo
 verb 3
-<ca>
------BEGIN CERTIFICATE-----
------END CERTIFICATE-----
-</ca>
-<cert>
------BEGIN CERTIFICATE-----
------END CERTIFICATE-----
-</cert>
-<key>
------BEGIN PRIVATE KEY-----
------END PRIVATE KEY-----
-</key>
 ```
-Теперь когда всё готово, кладем необходимые сертификаты/ключи на хост машину в каталог /etc/openvpn или прописываем ключи как указано выше. Запускаемся:
+Теперь когда всё готово, кладем необходимые сертификаты/ключи на client машину в каталог /etc/openvpn или прописываем ключи как указано выше. Запускаемся:
 ```
+openvpn --config client.conf
+```
+При успешном подключении проверяем пинг в внутреннему IP адресу сервера в туннеле.
+```
+[root@client openvpn]# ping -c 4 10.10.10.1
+PING 10.10.10.1 (10.10.10.1) 56(84) bytes of data.
+64 bytes from 10.10.10.1: icmp_seq=1 ttl=63 time=3.31 ms
+64 bytes from 10.10.10.1: icmp_seq=2 ttl=63 time=15.2 ms
+64 bytes from 10.10.10.1: icmp_seq=3 ttl=63 time=38.9 ms
+64 bytes from 10.10.10.1: icmp_seq=4 ttl=63 time=4.09 ms
+
+--- 10.10.10.1 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3003ms
+rtt min/avg/max/mdev = 3.313/15.397/38.946/14.391 ms
+```
+Также проверяем командой ip r (netstat -rn) на клиент машине, что сеть туннеля импортирована в таблицу маршрутизации.
+``[root@client openvpn]# ip r
+default via 10.0.2.2 dev eth0 proto dhcp metric 100
+10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+192.168.10.0/24 dev eth1 proto kernel scope link src 192.168.10.20 metric 101`
 
 ```
